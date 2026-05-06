@@ -4,15 +4,13 @@ use std::{fs, path::Path};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Config {
-    pub php_version: String,
-    pub nginx_dir: String,
+    pub default_php: String,
 }
 
 impl Default for Config {
     fn default() -> Self {
         Self {
-            php_version: "8.5".to_string(),
-            nginx_dir: "/etc/nginx/conf.d/".to_string(),
+            default_php: "8.5".to_string(),
         }
     }
 }

@@ -30,4 +30,8 @@ impl App {
     pub fn config_path(&self) -> PathBuf {
         self.app_dir.join("config.json")
     }
+
+    pub fn socket_path(&self) -> PathBuf {
+        self.app_dir.join("valet.sock")
+    }
 }

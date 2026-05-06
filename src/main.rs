@@ -6,6 +6,8 @@ use anyhow::{Ok, Result};
 mod app;
 mod commands;
 mod configuration;
+mod core;
+mod services;
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about=None)]
