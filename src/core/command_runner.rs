@@ -1,9 +1,8 @@
+use anyhow::{Ok, Result, anyhow};
 use std::{
     process::{Command, ExitStatus},
     sync::OnceLock,
 };
-
-use anyhow::{Ok, Result, anyhow};
 use system_env::SystemPackageManager;
 
 pub struct CommandRunner {
@@ -11,8 +10,8 @@ pub struct CommandRunner {
 }
 
 #[allow(dead_code)]
-trait StrArg: AsRef<str> {}
-impl<T: AsRef<str>> StrArg for T {}
+pub trait CommandArgs: AsRef<str> {}
+impl<T: AsRef<str>> CommandArgs for T {}
 
 static INSTANCE: OnceLock<CommandRunner> = OnceLock::new();
 
@@ -25,13 +24,20 @@ impl CommandRunner {
         })
     }
 
-    fn run_elevated<S: StrArg>(&self, args: &[S]) -> Result<ExitStatus> {
+    fn run_elevated<S: CommandArgs>(&self, args: &[S]) -> Result<ExitStatus> {
         let elevated_command = self
             .package_manager
             .get_elevated_command()
             .ok_or(anyhow!("Elevated command not available"))?;
 
-        let mut install_command = self
+        let status = Command::new(elevated_command)
+            .args(args.iter().map(|a| a.as_ref()))
+            .status()?;
+
+        Ok(status)
+    }
+    pub fn install_package<S: CommandArgs>(&self, package: &S) -> Result<ExitStatus> {
+        let mut cmd = self
             .package_manager
             .get_config()
             .commands
@@ -39,16 +45,11 @@ impl CommandRunner {
             .ok_or(anyhow!("Install command not available"))?
             .clone();
 
-        if let Some(pos) = install_command.iter().position(|x| x == "$") {
-            install_command.splice(pos..=pos, args.iter().map(|a| a.as_ref().to_string()));
+        if let Some(pos) = cmd.iter().position(|x| x == "$") {
+            cmd.splice(pos..=pos, std::iter::once(package.as_ref().to_string()));
         }
 
-        let status = Command::new(elevated_command)
-            .args(install_command)
-            .status()?;
-
-        Ok(status)
+        let cmd_refs: Vec<&str> = cmd.iter().map(|s| s.as_str()).collect();
+        self.run_elevated(&cmd_refs)
     }
-
-    pub fn install_package() {}
 }
