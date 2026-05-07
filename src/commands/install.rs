@@ -1,17 +1,15 @@
 use anyhow::Result;
 use std::process::Command;
 
-use crate::{app::App, core::command_runner::CommandRunner};
-
-const PACKAGES: &[&str] = &["dnsmasq", "nginx"];
+use crate::{app::App, core::CommandRunner};
 
 pub fn run(_app: &App) -> Result<()> {
     let command_runner = CommandRunner::init();
-    for package in PACKAGES {
-        if !is_package_installed(package) {
-            command_runner.install_package(package)?;
-        }
+
+    if !is_package_installed("nginx") {
+        command_runner.install_package(&"nginx")?;
     }
+
     Ok(())
 }
 
