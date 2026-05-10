@@ -1,4 +1,9 @@
-use std::{io::Write, process::Stdio};
+use std::{
+    io::Write,
+    path::Path,
+    process::Stdio,
+    time::{SystemTime, UNIX_EPOCH},
+};
 
 use anyhow::Result;
 
@@ -15,6 +20,21 @@ impl Nginx {
             && !value
         {
             Self::install()?;
+        }
+
+        if Path::new(NGINX_CONFIG_PATH).exists() {
+            let timestamp = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
+
+            let backup_path = format!("{}.back.{}", NGINX_CONFIG_PATH, timestamp);
+
+            let status = command_manager
+                .get_elevated_command_builder(&["cp", NGINX_CONFIG_PATH, &backup_path])
+                .status()?;
+
+            if !status.success() {
+                return Err(anyhow::anyhow!("Failed to backup nginx config"));
+            }
+            println!("Backed up nginx config to {}", backup_path);
         }
 
         let nginx_service_configuration =
