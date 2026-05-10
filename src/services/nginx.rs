@@ -40,11 +40,11 @@ impl Nginx {
         let nginx_service_configuration =
             command_manager.run(&"cat", Some(&["/lib/systemd/system/nginx.service"]))?;
 
-        let ouput_str = String::from_utf8_lossy(&nginx_service_configuration.stdout);
+        let output_str = String::from_utf8_lossy(&nginx_service_configuration.stdout);
 
         let mut pid_path = "pid /run/nginx.pid";
 
-        if let Some(_pos) = ouput_str.find("pid /") {
+        if output_str.contains("PIDFile=") {
             pid_path = "# pid /run/nginx.pid";
         }
 
