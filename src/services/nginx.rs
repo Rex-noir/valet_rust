@@ -1,7 +1,7 @@
 use crate::{App, NGINX_CONFIG_PATH, NGINX_CONFIG_STUB, core::CommandManager};
-use anyhow::Result;
+use anyhow::{Result, bail};
+use std::io::{self, Write};
 use std::{
-    io::Write,
     path::Path,
     process::Stdio,
     time::{SystemTime, UNIX_EPOCH},
@@ -14,7 +14,7 @@ impl Nginx {
     pub fn setup(app: &App) -> Result<()> {
         let cm = CommandManager::init();
 
-        if let Ok(false) = cm.is_installed(&"nginx") {
+        if cm.is_installed(&"nginx")? {
             Self::install_with(cm)?;
         }
 
@@ -26,6 +26,9 @@ impl Nginx {
         Self::write_config(cm, &config)?;
 
         println!("Nginx config updated successfully.");
+
+        Self::restart_nginx(cm)?;
+
         Ok(())
     }
 
@@ -95,6 +98,53 @@ impl Nginx {
         let status = child.wait()?;
         if !status.success() {
             return Err(anyhow::anyhow!("Failed to write config via sudo tee"));
+        }
+
+        Ok(())
+    }
+
+    fn restart_nginx(cm: &CommandManager) -> Result<()> {
+        let status = cm.run_elevated(&["nginx", "-t"])?;
+        if !status.success() {
+            bail!("Nginx config test failed");
+        }
+
+        let exists = cm.run_elevated(&["systemctl", "status", "nginx"])?;
+
+        if exists.code() == Some(4) {
+            bail!("Nginx service is not installed");
+        }
+
+        let active = cm.run_elevated(&["systemctl", "is-active", "--quiet", "nginx"])?;
+
+        if active.success() {
+            println!("Reloading nginx...");
+
+            let reload = cm.run_elevated(&["systemctl", "reload", "nginx"])?;
+
+            if !reload.success() {
+                bail!("Nginx reload failed");
+            }
+        } else {
+            print!("Nginx is not running. Start it now? [y/N]: ");
+            io::stdout().flush()?;
+
+            let mut input = String::new();
+            io::stdin().read_line(&mut input)?;
+
+            let input = input.trim().to_lowercase();
+
+            if input == "y" || input == "yes" {
+                let start = cm.run_elevated(&["systemctl", "start", "nginx"])?;
+
+                if !start.success() {
+                    bail!("Failed to start nginx");
+                }
+
+                println!("Nginx started successfully.");
+            } else {
+                println!("Skipping nginx start.");
+            }
         }
 
         Ok(())
