@@ -61,13 +61,15 @@ impl CommandManager {
     }
 
     pub fn is_installed<S: CommandArgs>(&self, package: &S) -> Result<bool> {
-        let cmd = self
+        let mut cmd = self
             .package_manager
             .get_config()
             .commands
             .get(&system_env::CommandType::ListPackages)
             .ok_or(anyhow!("List command not availabel"))?
             .clone();
+
+        cmd.push(package.as_ref().to_string());
 
         let output = Command::new(&cmd[0]).args(&cmd[1..]).output()?;
 

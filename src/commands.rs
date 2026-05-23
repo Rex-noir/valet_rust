@@ -9,12 +9,7 @@ mod link;
 #[derive(Debug, Subcommand)]
 pub enum Commands {
     Serve,
-    Link {
-        name: String,
-        path: Option<String>,
-        #[arg(long, short)]
-        php_version: Option<String>,
-    },
+    Link(link::Args),
     Install,
 }
 
@@ -22,11 +17,7 @@ impl Commands {
     pub fn run(self, app: &App) -> Result<()> {
         match self {
             Commands::Serve => todo!(),
-            Commands::Link {
-                name: _name,
-                path: _path,
-                php_version: _php_version,
-            } => todo!(),
+            Commands::Link(args) => link::run(app, args),
             Commands::Install => install::run(app),
         }
     }

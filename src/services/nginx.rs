@@ -14,7 +14,7 @@ impl Nginx {
     pub fn setup(app: &App) -> Result<()> {
         let cm = CommandManager::init();
 
-        if cm.is_installed(&"nginx")? {
+        if !cm.is_installed(&"nginx")? {
             Self::install_with(cm)?;
         }
 
@@ -104,15 +104,9 @@ impl Nginx {
     }
 
     fn restart_nginx(cm: &CommandManager) -> Result<()> {
-        let status = cm.run_elevated(&["nginx", "-t"])?;
+        let status = cm.run_elevated(&["nginx", "-t", "-q"])?;
         if !status.success() {
             bail!("Nginx config test failed");
-        }
-
-        let exists = cm.run_elevated(&["systemctl", "status", "nginx"])?;
-
-        if exists.code() == Some(4) {
-            bail!("Nginx service is not installed");
         }
 
         let active = cm.run_elevated(&["systemctl", "is-active", "--quiet", "nginx"])?;
