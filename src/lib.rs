@@ -1,11 +1,7 @@
 pub mod commands;
-pub mod configuration;
 pub mod core;
 pub mod services;
-
-mod app;
-
-pub use app::App;
+pub mod setup;
 
 use clap::Parser;
 

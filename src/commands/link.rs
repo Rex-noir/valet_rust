@@ -1,7 +1,7 @@
 use anyhow::Result;
 use clap::Args as ClapArgs;
 
-use crate::App;
+use crate::core::App;
 
 #[derive(Debug, ClapArgs)]
 pub struct Args {

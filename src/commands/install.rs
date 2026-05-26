@@ -1,7 +1,7 @@
 use anyhow::Result;
 
 use crate::{
-    App,
+    core::App,
     services::{DnsMasq, Nginx},
 };
 

@@ -2,7 +2,7 @@ use anyhow::Result;
 use directories::ProjectDirs;
 use std::{fs, path::PathBuf};
 
-use crate::configuration::Config;
+use crate::core::Config;
 
 pub struct App {
     app_dir: PathBuf,

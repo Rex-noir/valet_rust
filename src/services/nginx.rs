@@ -1,4 +1,5 @@
-use crate::{App, NGINX_CONFIG_PATH, NGINX_CONFIG_STUB, core::CommandManager};
+use crate::core::App;
+use crate::{NGINX_CONFIG_PATH, NGINX_CONFIG_STUB, core::CommandManager};
 use anyhow::{Result, bail};
 use std::io::{self, Write};
 use std::{

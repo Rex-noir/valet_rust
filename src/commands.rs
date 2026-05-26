@@ -1,7 +1,8 @@
 use clap::Subcommand;
 
-use crate::app::App;
 use anyhow::Result;
+
+use crate::core::App;
 
 mod install;
 mod link;

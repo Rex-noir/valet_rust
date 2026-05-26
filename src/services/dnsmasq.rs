@@ -2,7 +2,7 @@ use std::{fs, path::Path};
 
 use anyhow::Result;
 
-use crate::{App, core::CommandManager};
+use crate::core::{App, CommandManager};
 
 #[derive(Debug)]
 pub struct DnsMasq;
