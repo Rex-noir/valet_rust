@@ -1,2 +1,0 @@
-mod dnsmasq;
-mod nginx;

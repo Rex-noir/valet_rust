@@ -2,12 +2,12 @@ use anyhow::Result;
 
 use crate::{
     core::App,
-    services::{DnsMasq, Nginx},
+    setup::{Dns, Nginx},
 };
 
 pub fn run(app: &App) -> Result<()> {
     Nginx::setup(app)?;
-    DnsMasq::setup(app)?;
+    Dns::setup(app)?;
 
     Ok(())
 }
