@@ -15,12 +15,14 @@ impl<T: AsRef<str>> CommandArgs for T {}
 
 static INSTANCE: OnceLock<CommandManager> = OnceLock::new();
 
+fn detect_package_manager() -> SystemPackageManager {
+    SystemPackageManager::detect().unwrap_or(SystemPackageManager::Pacman)
+}
+
 impl CommandManager {
     pub fn init() -> &'static Self {
-        INSTANCE.get_or_init(|| {
-            let package_manager =
-                SystemPackageManager::detect().expect("Failed to detect package manager");
-            CommandManager { package_manager }
+        INSTANCE.get_or_init(|| CommandManager {
+            package_manager: detect_package_manager(),
         })
     }
 
