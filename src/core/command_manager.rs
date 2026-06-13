@@ -43,6 +43,7 @@ impl CommandManager {
 
         let status = Command::new(elevated_program)
             .args(cmd.iter().map(|s| s.as_str()))
+            .arg("-y")
             .status()?;
 
         Ok(status)
