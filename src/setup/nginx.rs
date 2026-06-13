@@ -15,7 +15,7 @@ impl Nginx {
     pub fn setup(app: &App) -> Result<()> {
         let cm = CommandManager::init();
 
-        if !cm.is_installed(&"nginx")? {
+        if !cm.is_installed("nginx")? {
             Self::install_with(cm)?;
         }
 
@@ -38,7 +38,7 @@ impl Nginx {
     }
 
     fn install_with(cm: &CommandManager) -> Result<()> {
-        cm.install_package(&"nginx")?;
+        cm.install_package("nginx")?;
         Ok(())
     }
 
@@ -74,7 +74,7 @@ impl Nginx {
     }
 
     fn resolve_pid_path(cm: &CommandManager) -> &'static str {
-        let output = cm.run(&"cat", Some(&["/lib/systemd/system/nginx.service"]));
+        let output = cm.run("cat", &["/lib/systemd/system/nginx.service"]);
 
         match output {
             Ok(out) if String::from_utf8_lossy(&out.stdout).contains("PIDFile=") => {

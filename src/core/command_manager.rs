@@ -9,12 +9,9 @@ pub struct CommandManager {
     package_manager: SystemPackageManager,
 }
 
-#[allow(dead_code)]
-pub trait CommandArgs: AsRef<str> {}
-impl<T: AsRef<str>> CommandArgs for T {}
-
 static INSTANCE: OnceLock<CommandManager> = OnceLock::new();
 
+// The crate I used couldn't detect cachyos
 fn detect_package_manager() -> SystemPackageManager {
     SystemPackageManager::detect().unwrap_or(SystemPackageManager::Pacman)
 }
@@ -39,13 +36,13 @@ impl CommandManager {
         cmd
     }
 
-    pub fn run_elevated<S: CommandArgs>(&self, args: &[S]) -> Result<ExitStatus> {
+    pub fn run_elevated(&self, args: &[&str]) -> Result<ExitStatus> {
         let mut elevated_command = self.get_elevated_command_builder(args);
         let status = elevated_command.status()?;
         Ok(status)
     }
 
-    pub fn install_package<S: CommandArgs>(&self, package: &S) -> Result<ExitStatus> {
+    pub fn install_package(&self, package: &str) -> Result<ExitStatus> {
         let mut cmd = self
             .package_manager
             .get_config()
@@ -55,14 +52,14 @@ impl CommandManager {
             .clone();
 
         if let Some(pos) = cmd.iter().position(|x| x == "$") {
-            cmd.splice(pos..=pos, std::iter::once(package.as_ref().to_string()));
+            cmd.splice(pos..=pos, std::iter::once(package.to_string()));
         }
 
         let cmd_refs: Vec<&str> = cmd.iter().map(|s| s.as_str()).collect();
         self.run_elevated(&cmd_refs)
     }
 
-    pub fn is_installed<S: CommandArgs>(&self, package: &S) -> Result<bool> {
+    pub fn is_installed(&self, package: &str) -> Result<bool> {
         let mut cmd = self
             .package_manager
             .get_config()
@@ -71,7 +68,7 @@ impl CommandManager {
             .ok_or(anyhow!("List command not availabel"))?
             .clone();
 
-        cmd.push(package.as_ref().to_string());
+        cmd.push(package.to_string());
 
         let output = Command::new(&cmd[0]).args(&cmd[1..]).output()?;
 
@@ -79,15 +76,11 @@ impl CommandManager {
 
         let installed_list = self.package_manager.get_config().list_parser.parse(&stdout);
 
-        Ok(installed_list.contains_key(package.as_ref()))
+        Ok(installed_list.contains_key(package))
     }
 
-    pub fn run<S: CommandArgs>(&self, command: &S, args: Option<&[S]>) -> Result<Output> {
-        let mut cmd = Command::new(command.as_ref());
-        if let Some(args) = args {
-            cmd.args(args.iter().map(|a| a.as_ref()));
-        }
-        let output = cmd.output()?;
+    pub fn run(&self, command: &str, args: &[&str]) -> Result<Output> {
+        let output = Command::new(command).args(args).output()?;
         Ok(output)
     }
 
