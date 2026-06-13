@@ -23,25 +23,6 @@ impl CommandManager {
         })
     }
 
-    pub fn get_elevated_command_builder<S: AsRef<str>>(&self, args: &[S]) -> Command {
-        let elevated_program = self
-            .package_manager
-            .get_elevated_command()
-            .expect("Elevated command not available");
-
-        let mut cmd = Command::new(elevated_program);
-
-        cmd.args(args.iter().map(|a| a.as_ref()));
-
-        cmd
-    }
-
-    pub fn run_elevated(&self, args: &[&str]) -> Result<ExitStatus> {
-        let mut elevated_command = self.get_elevated_command_builder(args);
-        let status = elevated_command.status()?;
-        Ok(status)
-    }
-
     pub fn install_package(&self, package: &str) -> Result<ExitStatus> {
         let mut cmd = self
             .package_manager
@@ -55,8 +36,16 @@ impl CommandManager {
             cmd.splice(pos..=pos, std::iter::once(package.to_string()));
         }
 
-        let cmd_refs: Vec<&str> = cmd.iter().map(|s| s.as_str()).collect();
-        self.run_elevated(&cmd_refs)
+        let elevated_program = self
+            .package_manager
+            .get_elevated_command()
+            .expect("Elevated command not available");
+
+        let status = Command::new(elevated_program)
+            .args(cmd.iter().map(|s| s.as_str()))
+            .status()?;
+
+        Ok(status)
     }
 
     pub fn is_installed(&self, package: &str) -> Result<bool> {
@@ -65,7 +54,7 @@ impl CommandManager {
             .get_config()
             .commands
             .get(&system_env::CommandType::ListPackages)
-            .ok_or(anyhow!("List command not availabel"))?
+            .ok_or(anyhow!("List command not available"))?
             .clone();
 
         cmd.push(package.to_string());
@@ -84,20 +73,51 @@ impl CommandManager {
         Ok(output)
     }
 
+    /// Returns the current user's name using the $USER env var,
+    /// falling back to parsing /etc/passwd by UID from /proc/self/status.
     pub fn user(&self) -> String {
-        let output = Command::new("whoami")
-            .output()
-            .expect("Failed to run whoami command");
-
-        String::from_utf8_lossy(&output.stdout).trim().to_string()
+        std::env::var("USER").unwrap_or_else(|_| {
+            let uid = read_id_from_proc("Uid").unwrap_or(65534);
+            resolve_name_from_file("/etc/passwd", uid).unwrap_or_else(|| "nobody".to_string())
+        })
     }
 
+    /// Returns the current user's primary group name by reading
+    /// /proc/self/status for the GID and resolving it via /etc/group.
     pub fn group(&self) -> String {
-        let output = Command::new("id")
-            .arg("-gn")
-            .output()
-            .expect("Failed to get user group");
-
-        String::from_utf8_lossy(&output.stdout).trim().to_string()
+        let gid = read_id_from_proc("Gid").unwrap_or(65534);
+        resolve_name_from_file("/etc/group", gid).unwrap_or_else(|| "nogroup".to_string())
     }
+}
+
+/// Read a UID or GID from /proc/self/status.
+/// The file contains lines like "Uid:\t1000\t1000\t1000\t1000" — we take the
+/// real (first) value.
+fn read_id_from_proc(key: &str) -> Option<u32> {
+    let content = std::fs::read_to_string("/proc/self/status").ok()?;
+    for line in content.lines() {
+        if let Some(rest) = line.strip_prefix(key) {
+            let rest = rest.strip_prefix(':')?;
+            let first_field = rest.split_whitespace().next()?;
+            return first_field.parse::<u32>().ok();
+        }
+    }
+    None
+}
+
+/// Resolve a name from a colon-delimited passwd/group file.
+/// Format: name:x:id:...
+fn resolve_name_from_file(path: &str, target_id: u32) -> Option<String> {
+    let content = std::fs::read_to_string(path).ok()?;
+    for line in content.lines() {
+        let fields: Vec<&str> = line.split(':').collect();
+        if fields.len() >= 3 {
+            if let Ok(id) = fields[2].parse::<u32>() {
+                if id == target_id {
+                    return Some(fields[0].to_string());
+                }
+            }
+        }
+    }
+    None
 }

@@ -1,3 +1,4 @@
+use std::fs;
 use std::process::Output;
 
 use anyhow::{Ok, Result, bail};
@@ -8,7 +9,7 @@ use crate::core::{App, CommandManager};
 pub struct Dns;
 
 impl Dns {
-    pub fn setup(app: &App) -> Result<()> {
+    pub fn setup(_app: &App) -> Result<()> {
         let cm = CommandManager::init();
 
         // check systemd version
@@ -43,7 +44,7 @@ impl Dns {
                 Self::restart_systemd_resolved()?;
             }
         } else {
-            println!("Systemd version can't be determined! Aborting!!")
+            bail!("Systemd version can't be determined! Aborting!!")
         }
 
         Ok(())
@@ -58,50 +59,44 @@ impl Dns {
     }
 
     fn setup_dns_delegate_config() -> Result<()> {
-        let cm = CommandManager::init();
+        let dir = "/etc/systemd/dns-delegate.d";
+        fs::create_dir_all(dir).map_err(|e| anyhow::anyhow!("Failed to create {}: {}", dir, e))?;
 
-        let status = cm.run_elevated(&["mkdir", "-p", "/etc/systemd/dns-delegate.d"])?;
-
-        if !status.success() {
-            eprintln!("Failed to ensure ensure_delegate_directory_exists");
-        }
         let path = "/etc/systemd/dns-delegate.d/valet-rust.dns-delegate";
         let content = "[Delegate]\nDNS=127.0.0.1\nDomains=~test\nDNSSECMode=no\n";
-        let cmd = format!("printf '%s' '{}' | sudo tee {} > /dev/null", content, path);
-        let status = cm.run_elevated(&["sh", "-c", &cmd])?;
-        if !status.success() {
-            bail!("Failed to write DNS delegate config");
-        }
+        fs::write(path, content).map_err(|e| {
+            anyhow::anyhow!("Failed to write DNS delegate config to {}: {}", path, e)
+        })?;
+
         println!("DNS delegate config written to {}", path);
         Ok(())
     }
 
     fn restart_systemd_resolved() -> Result<()> {
         let cm = CommandManager::init();
-        let status = cm.run_elevated(&["systemctl", "restart", "systemd-resolved"])?;
-        if !status.success() {
+        let output = cm.run("systemctl", &["restart", "systemd-resolved"])?;
+        if !output.status.success() {
             bail!("Error restarting systemd-resolved");
         }
         Ok(())
     }
 
     fn setup_dnsmasq_configuration() -> Result<()> {
-        let cm = CommandManager::init();
-        let status = cm.run_elevated(&["mkdir", "-p", "/etc/dnsmasq.d"])?;
-        if !status.success() {
-            bail!("Failed to ensure /etc/dnsmasq.d exists");
-        }
+        let main_dnsmasq_conf_path = "/etc/dnsmasq.conf";
+        let stub_dnsmasq_conf = include_str!("../stubs/dnsmasq.conf");
+
+        fs::write(main_dnsmasq_conf_path, stub_dnsmasq_conf)?;
+
+        let dir = "/etc/dnsmasq.d";
+        fs::create_dir_all(dir).map_err(|e| anyhow::anyhow!("Failed to create {}: {}", dir, e))?;
+
+        let path = "/etc/dnsmasq.d/valet-rust.conf";
         let config =
             "listen-address=127.0.0.1\nbind-interfaces\nno-resolv\naddress=/.test/127.0.0.1\n";
-        let cmd = format!(
-            "printf '%s' '{}' | sudo tee /etc/dnsmasq.d/valet-rust.conf > /dev/null",
-            config
-        );
-        let status = cm.run_elevated(&["sh", "-c", &cmd])?;
-        if !status.success() {
-            bail!("Failed to write dnsmasq config");
-        }
-        println!("dnsmasq config written to /etc/dnsmasq.d/valet-rust.conf");
+        fs::write(path, config)
+            .map_err(|e| anyhow::anyhow!("Failed to write dnsmasq config to {}: {}", path, e))?;
+
+        println!("dnsmasq config written to {}", path);
         Ok(())
     }
 
@@ -113,21 +108,18 @@ impl Dns {
     }
 
     fn disable_systemd_resolved_dns_stub_listener() -> Result<()> {
-        let cm = CommandManager::init();
-
-        let status = cm.run_elevated(&["mkdir", "-p", "/etc/systemd/resolved.conf.d"])?;
-        if !status.success() {
-            bail!("Failed to create /etc/systemd/resolved.conf.d");
-        }
+        let dir = "/etc/systemd/resolved.conf.d";
+        fs::create_dir_all(dir).map_err(|e| anyhow::anyhow!("Failed to create {}: {}", dir, e))?;
 
         let path = "/etc/systemd/resolved.conf.d/no-stub-listener.conf";
         let content = "[Resolve]\nDNSStubListener=no\n";
-        let cmd = format!("printf '%s' '{}' | sudo tee {} > /dev/null", content, path);
-
-        let status = cm.run_elevated(&["sh", "-c", &cmd])?;
-        if !status.success() {
-            bail!("Failed to write resolved stub listener config to {}", path);
-        }
+        fs::write(path, content).map_err(|e| {
+            anyhow::anyhow!(
+                "Failed to write resolved stub listener config to {}: {}",
+                path,
+                e
+            )
+        })?;
 
         println!("DNSStubListener disabled via drop-in at {}", path);
         Ok(())

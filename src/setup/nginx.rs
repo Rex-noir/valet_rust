@@ -1,12 +1,10 @@
 use crate::core::App;
 use crate::{NGINX_CONFIG_PATH, NGINX_CONFIG_STUB, core::CommandManager};
 use anyhow::{Result, bail};
+use std::fs;
 use std::io::{self, Write};
-use std::{
-    path::Path,
-    process::Stdio,
-    time::{SystemTime, UNIX_EPOCH},
-};
+use std::path::Path;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 #[derive(Debug)]
 pub struct Nginx;
@@ -20,11 +18,11 @@ impl Nginx {
         }
 
         if Path::new(NGINX_CONFIG_PATH).exists() {
-            Self::backup_config(cm)?;
+            Self::backup_config()?;
         }
 
         let config = Self::build_config(cm, app)?;
-        Self::write_config(cm, &config)?;
+        Self::write_config(&config)?;
 
         println!("Nginx config updated successfully.");
 
@@ -42,24 +40,19 @@ impl Nginx {
         Ok(())
     }
 
-    fn backup_config(cm: &CommandManager) -> Result<()> {
+    fn backup_config() -> Result<()> {
         let timestamp = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
         let backup_path = format!("{}.back.{}", NGINX_CONFIG_PATH, timestamp);
 
-        let status = cm
-            .get_elevated_command_builder(&["cp", NGINX_CONFIG_PATH, &backup_path])
-            .status()?;
-
-        if !status.success() {
-            return Err(anyhow::anyhow!("Failed to backup nginx config"));
-        }
+        fs::copy(NGINX_CONFIG_PATH, &backup_path)
+            .map_err(|e| anyhow::anyhow!("Failed to backup nginx config: {}", e))?;
 
         println!("Backed up nginx config to {}", backup_path);
         Ok(())
     }
 
     fn build_config(cm: &CommandManager, app: &App) -> Result<String> {
-        let pid_path = Self::resolve_pid_path(cm);
+        let pid_path = Self::resolve_pid_path();
 
         let config = NGINX_CONFIG_STUB
             .replace("VALET_USER", &cm.user())
@@ -73,51 +66,35 @@ impl Nginx {
         Ok(config)
     }
 
-    fn resolve_pid_path(cm: &CommandManager) -> &'static str {
-        let output = cm.run("cat", &["/lib/systemd/system/nginx.service"]);
+    fn resolve_pid_path() -> &'static str {
+        let content = fs::read_to_string("/lib/systemd/system/nginx.service");
 
-        match output {
-            Ok(out) if String::from_utf8_lossy(&out.stdout).contains("PIDFile=") => {
-                "# pid /run/nginx.pid"
-            }
+        match content {
+            Ok(s) if s.contains("PIDFile=") => "# pid /run/nginx.pid",
             _ => "pid /run/nginx.pid",
         }
     }
 
-    fn write_config(cm: &CommandManager, config: &str) -> Result<()> {
-        let mut child = cm
-            .get_elevated_command_builder(&["tee", NGINX_CONFIG_PATH])
-            .stdin(Stdio::piped())
-            .stdout(Stdio::null())
-            .spawn()
-            .map_err(|e| anyhow::anyhow!("Failed to spawn elevated tee: {}", e))?;
-
-        if let Some(mut stdin) = child.stdin.take() {
-            stdin.write_all(config.as_bytes())?;
-        }
-
-        let status = child.wait()?;
-        if !status.success() {
-            return Err(anyhow::anyhow!("Failed to write config via sudo tee"));
-        }
-
+    fn write_config(config: &str) -> Result<()> {
+        fs::write(NGINX_CONFIG_PATH, config)
+            .map_err(|e| anyhow::anyhow!("Failed to write nginx config to {}: {}", NGINX_CONFIG_PATH, e))?;
         Ok(())
     }
 
     fn restart_nginx(cm: &CommandManager) -> Result<()> {
-        let status = cm.run_elevated(&["nginx", "-t", "-q"])?;
-        if !status.success() {
+        let output = cm.run("nginx", &["-t", "-q"])?;
+        if !output.status.success() {
             bail!("Nginx config test failed");
         }
 
-        let active = cm.run_elevated(&["systemctl", "is-active", "--quiet", "nginx"])?;
+        let active = cm.run("systemctl", &["is-active", "--quiet", "nginx"])?;
 
-        if active.success() {
+        if active.status.success() {
             println!("Reloading nginx...");
 
-            let reload = cm.run_elevated(&["systemctl", "reload", "nginx"])?;
+            let reload = cm.run("systemctl", &["reload", "nginx"])?;
 
-            if !reload.success() {
+            if !reload.status.success() {
                 bail!("Nginx reload failed");
             }
         } else {
@@ -130,9 +107,9 @@ impl Nginx {
             let input = input.trim().to_lowercase();
 
             if input == "y" || input == "yes" {
-                let start = cm.run_elevated(&["systemctl", "start", "nginx"])?;
+                let start = cm.run("systemctl", &["start", "nginx"])?;
 
-                if !start.success() {
+                if !start.status.success() {
                     bail!("Failed to start nginx");
                 }
 
