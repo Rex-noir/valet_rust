@@ -12,7 +12,7 @@ impl Dns {
         // check systemd version
 
         let version = cm
-            .run(&"systemctl", Some(&["--version"]))
+            .run("systemctl", &["--version"])
             .ok()
             .and_then(|output| String::from_utf8(output.stdout).ok())
             .and_then(|s| Self::parse_systemd_version(&s));
@@ -28,6 +28,9 @@ impl Dns {
             println!("Setting up dns delegate config ...");
 
             Self::setup_dns_delegate_config()?;
+
+            println!("Installing dnsmasq ...");
+            cm.install_package("dnsmasq")?;
 
             println!("Restarting systemd-resolved");
 
