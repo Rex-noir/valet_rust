@@ -24,8 +24,6 @@ impl Dns {
             if v < 258 {
                 eprintln!("Not supported systemd version less than 258.")
             } else {
-                Self::ensure_delegate_directory_exists()?;
-
                 println!("Setting up systemd resolved dns delegate config ...");
                 Self::setup_dns_delegate_config()?;
 
@@ -59,7 +57,7 @@ impl Dns {
         version_str.parse::<u32>().ok()
     }
 
-    fn ensure_delegate_directory_exists() -> Result<()> {
+    fn setup_dns_delegate_config() -> Result<()> {
         let cm = CommandManager::init();
 
         let status = cm.run_elevated(&["mkdir", "-p", "/etc/systemd/dns-delegate.d"])?;
@@ -67,14 +65,8 @@ impl Dns {
         if !status.success() {
             eprintln!("Failed to ensure ensure_delegate_directory_exists");
         }
-
-        Ok(())
-    }
-
-    fn setup_dns_delegate_config() -> Result<()> {
-        let cm = CommandManager::init();
         let path = "/etc/systemd/dns-delegate.d/valet-rust.dns-delegate";
-        let content = "[Delegate]\nDNS=127.0.0.1\nDomains=~test\n";
+        let content = "[Delegate]\nDNS=127.0.0.1\nDomains=~test\nDNSSECMode=no\n";
         let cmd = format!("printf '%s' '{}' | sudo tee {} > /dev/null", content, path);
         let status = cm.run_elevated(&["sh", "-c", &cmd])?;
         if !status.success() {
@@ -99,7 +91,8 @@ impl Dns {
         if !status.success() {
             bail!("Failed to ensure /etc/dnsmasq.d exists");
         }
-        let config = "listen-address=127.0.0.1\nbind-interfaces\naddress=/.test/127.0.0.1\n";
+        let config =
+            "listen-address=127.0.0.1\nbind-interfaces\nno-resolv\naddress=/.test/127.0.0.1\n";
         let cmd = format!(
             "printf '%s' '{}' | sudo tee /etc/dnsmasq.d/valet-rust.conf > /dev/null",
             config
