@@ -3,13 +3,13 @@ use std::process::Output;
 
 use anyhow::{Ok, Result, bail};
 
-use crate::core::{App, CommandManager};
+use crate::core::CommandManager;
 
 #[derive(Debug)]
 pub struct Dns;
 
 impl Dns {
-    pub fn setup(_app: &App) -> Result<()> {
+    pub fn setup() -> Result<()> {
         let cm = CommandManager::init();
 
         // check systemd version

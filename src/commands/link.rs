@@ -1,8 +1,6 @@
 use anyhow::Result;
 use clap::Args as ClapArgs;
 
-use crate::core::App;
-
 #[derive(Debug, ClapArgs)]
 pub struct Args {
     pub name: String,
@@ -12,7 +10,7 @@ pub struct Args {
     pub php_version: Option<String>,
 }
 
-pub fn run(app: &App, args: Args) -> Result<()> {
+pub fn run(args: Args) -> Result<()> {
     let Args {
         name,
         path,

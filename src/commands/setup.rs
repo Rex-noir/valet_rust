@@ -1,10 +1,7 @@
 use anyhow::{Ok, Result};
 use clap::{Args, Subcommand};
 
-use crate::{
-    core::App,
-    setup::{Dns, Nginx},
-};
+use crate::setup::{Caddy, Dns};
 
 #[derive(Debug, Args)]
 pub struct SetupArgs {
@@ -14,20 +11,20 @@ pub struct SetupArgs {
 #[derive(Debug, Subcommand)]
 pub enum SetupCommands {
     Dns,
-    Nginx,
+    Caddy,
     All,
 }
 
-pub fn run(app: &App, args: SetupArgs) -> Result<()> {
+pub fn run(args: SetupArgs) -> Result<()> {
     match args.command {
         SetupCommands::Dns => {
             println!("Setting up DNS...");
-            Dns::setup(app)?;
+            Dns::setup()?;
             Ok(())
         }
-        SetupCommands::Nginx => {
-            println!("Setting up nginx");
-            Nginx::setup(app)?;
+        SetupCommands::Caddy => {
+            println!("Setting up Caddy...");
+            Caddy::setup()?;
             Ok(())
         }
         SetupCommands::All => {

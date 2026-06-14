@@ -112,12 +112,14 @@ fn resolve_name_from_file(path: &str, target_id: u32) -> Option<String> {
     let content = std::fs::read_to_string(path).ok()?;
     for line in content.lines() {
         let fields: Vec<&str> = line.split(':').collect();
-        if fields.len() >= 3 {
-            if let Ok(id) = fields[2].parse::<u32>() {
-                if id == target_id {
-                    return Some(fields[0].to_string());
-                }
-            }
+        if fields.len() < 3 {
+            continue;
+        }
+        let Ok(id) = fields[2].parse::<u32>() else {
+            continue;
+        };
+        if id == target_id {
+            return Some(fields[0].to_string());
         }
     }
     None

@@ -1,13 +1,10 @@
 use anyhow::Result;
 
-use crate::{
-    core::App,
-    setup::{Dns, Nginx},
-};
+use crate::setup::{Caddy, Dns};
 
-pub fn run(app: &App) -> Result<()> {
-    Nginx::setup(app)?;
-    Dns::setup(app)?;
+pub fn run() -> Result<()> {
+    Dns::setup()?;
+    Caddy::setup()?;
 
     Ok(())
 }

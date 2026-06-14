@@ -2,7 +2,7 @@ use clap::Subcommand;
 
 use anyhow::Result;
 
-use crate::{commands::setup::SetupArgs, core::App};
+use crate::commands::setup::SetupArgs;
 
 mod install;
 mod link;
@@ -17,12 +17,12 @@ pub enum Commands {
 }
 
 impl Commands {
-    pub fn run(self, app: &App) -> Result<()> {
+    pub fn run(self) -> Result<()> {
         match self {
             Commands::Serve => todo!(),
-            Commands::Link(args) => link::run(app, args),
-            Commands::Install => install::run(app),
-            Commands::Setup(args) => setup::run(app, args),
+            Commands::Link(args) => link::run(args),
+            Commands::Install => install::run(),
+            Commands::Setup(args) => setup::run(args),
         }
     }
 }

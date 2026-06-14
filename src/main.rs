@@ -1,13 +1,11 @@
 use anyhow::Result;
 use clap::Parser;
-use valet_rust::{Cli, core::App};
+use valet_rust::Cli;
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
 
-    let app = App::new()?;
-
-    cli.commands.run(&app)?;
+    cli.commands.run()?;
 
     Ok(())
 }
