@@ -31,8 +31,10 @@ impl Dns {
                 println!("Disable systemd resolved DNSStubListener");
                 Self::disable_systemd_resolved_dns_stub_listener()?;
 
-                println!("Installing dnsmasq ...");
-                cm.install_package("dnsmasq")?;
+                if !cm.is_installed("dnsmasq")? {
+                    println!("Installing dnsmasq ...");
+                    cm.install_package("dnsmasq")?;
+                }
 
                 println!("Setting up dnsmasq configuration ...");
                 Self::setup_dnsmasq_configuration()?;
