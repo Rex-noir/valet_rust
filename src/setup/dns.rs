@@ -40,6 +40,9 @@ impl Dns {
                 println!("Restarting dnsmasq");
                 Self::restart_dnsmasq()?;
 
+                println!("Enable dnsmasq systemd service ...");
+                Self::enable_dnsmasq_systemd_service()?;
+
                 println!("Restarting systemd-resolved");
                 Self::restart_systemd_resolved()?;
             }
@@ -123,5 +126,11 @@ impl Dns {
 
         println!("DNSStubListener disabled via drop-in at {}", path);
         Ok(())
+    }
+
+    fn enable_dnsmasq_systemd_service() -> Result<Output> {
+        let cm = CommandManager::init();
+        let output = cm.run("systemctl", &["enable", "dnsmasq", "--now"])?;
+        Ok(output)
     }
 }
