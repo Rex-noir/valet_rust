@@ -11,7 +11,8 @@ mod setup;
 #[derive(Debug, Subcommand)]
 pub enum Commands {
     Serve,
-    Link(link::Args),
+    #[command(subcommand)]
+    Link(link::LinkCommand),
     Install,
     Setup(SetupArgs),
 }

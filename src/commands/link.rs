@@ -1,21 +1,32 @@
 use anyhow::Result;
-use clap::Args as ClapArgs;
 
-#[derive(Debug, ClapArgs)]
-pub struct Args {
-    pub name: String,
-    pub path: Option<String>,
-    #[arg(long, short)]
-    #[arg(long, short)]
-    pub php_version: Option<String>,
+#[derive(Debug, clap::Subcommand)]
+pub enum LinkCommand {
+    Laravel {
+        name: String,
+        path: Option<String>,
+
+        #[arg(long)]
+        php_version: Option<String>,
+    },
+    Symfony {
+        name: String,
+        path: Option<String>,
+
+        #[arg(long)]
+        php_version: Option<String>,
+    },
+    Vite {
+        name: String,
+        #[arg(long, default_value = ".")]
+        path: Option<String>,
+
+        #[arg(long, default_value_t = 5173)]
+        port: u16,
+    },
 }
 
-pub fn run(args: Args) -> Result<()> {
-    let Args {
-        name,
-        path,
-        php_version,
-    } = args;
-    println!("{name:?} {path:?} {php_version:?}");
+pub fn run(command: LinkCommand) -> Result<()> {
+    println!("{command:?}");
     Ok(())
 }
