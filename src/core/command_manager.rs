@@ -1,6 +1,6 @@
 use anyhow::{Result, anyhow};
 use std::{
-    process::{Command, ExitStatus, Output},
+    process::{Command, ExitStatus},
     sync::OnceLock,
 };
 use system_env::SystemPackageManager;
@@ -67,11 +67,6 @@ impl CommandManager {
         let installed_list = self.package_manager.get_config().list_parser.parse(&stdout);
 
         Ok(installed_list.contains_key(package))
-    }
-
-    pub fn run(&self, command: &str, args: &[&str]) -> Result<Output> {
-        let output = Command::new(command).args(args).output()?;
-        Ok(output)
     }
 
     /// Returns the current user's name using the $USER env var,

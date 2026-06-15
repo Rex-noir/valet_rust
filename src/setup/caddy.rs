@@ -1,16 +1,19 @@
-use std::process::{ExitStatus, Output};
+use std::{
+    env, fs,
+    os::unix::fs::chown,
+    path::PathBuf,
+    process::{Command, ExitStatus},
+};
 
-use anyhow::{Error, Result};
+use anyhow::{Error, Ok, Result, bail};
+use which::which;
 
-use crate::core::CommandManager;
+use crate::core::{App, CommandManager};
 
 pub struct Caddy;
 
 impl Caddy {
     pub fn setup() -> Result<()> {
-        // install Caddy
-        //
-        //
         let cm = CommandManager::init();
 
         if !cm.is_installed("caddy")? {
@@ -18,8 +21,20 @@ impl Caddy {
             Self::install_caddy()?;
         }
 
-        println!("Enabling caddy systemd service ...");
-        Self::enable_caddy_systemd_service()?;
+        println!("Setup caddy configuration");
+        Self::setup_caddy_configuration()?;
+
+        println!("Disable default caddy systemd service");
+        Self::disable_caddy_system_service()?;
+
+        println!("Create valet rust caddy systemd service");
+        Self::create_valet_rust_caddy_service()?;
+
+        println!("Enable valet rust caddy systemd service");
+        Self::enable_valet_rust_systemd_service()?;
+
+        println!("Trust caddy local certs");
+        Self::trust_caddy_local_certs()?;
 
         Ok(())
     }
@@ -29,8 +44,92 @@ impl Caddy {
         cm.install_package("caddy")
     }
 
-    fn enable_caddy_systemd_service() -> Result<Output, Error> {
-        let cm = CommandManager::init();
-        cm.run("systemctl", &["enable", "--now", "caddy"])
+    fn trust_caddy_local_certs() -> Result<()> {
+        let caddy = which::which("caddy")?;
+
+        let status = Command::new(caddy).arg("trust").status()?;
+
+        if !status.success() {
+            anyhow::bail!("`caddy trust` failed");
+        }
+
+        Ok(())
+    }
+
+    fn setup_caddy_configuration() -> Result<()> {
+        let stub_config = include_str!("../stubs/Caddyfile");
+        let app = App::init();
+
+        let caddy_files_dir = app.config_path.join("caddy_files");
+        fs::create_dir_all(&caddy_files_dir)?;
+
+        let import_path = caddy_files_dir.join("*");
+
+        let config = stub_config.replace(
+            "{{CADDY_CONFIGS_DIR}}",
+            import_path
+                .to_str()
+                .expect("Application config path is not valid UTF-8"),
+        );
+
+        let main_caddy_path = app.config_path.join("Caddyfile");
+
+        fs::write(&main_caddy_path, config)?;
+
+        if env::var_os("SUDO_USER").is_some() {
+            chown(&caddy_files_dir, Some(app.uid), Some(app.gid))
+                .expect("failed to chown caddy config dirs");
+
+            chown(&main_caddy_path, Some(app.uid), Some(app.gid))
+                .expect("failed to chown main caddy file")
+        }
+
+        Ok(())
+    }
+
+    fn disable_caddy_system_service() -> Result<()> {
+        let status = Command::new("systemctl")
+            .args(["disable", "--now", "caddy"])
+            .status()?;
+
+        if !status.success() {
+            anyhow::bail!("failed to disable caddy system service");
+        }
+
+        Ok(())
+    }
+
+    fn create_valet_rust_caddy_service() -> Result<()> {
+        let app = App::init();
+        let caddy_bin = which("caddy")?;
+
+        let service_config = include_str!("../stubs/caddy.service")
+            .replace("{{USERNAME}}", &app.username)
+            .replace(
+                "{{CADDY_BIN}}",
+                caddy_bin.to_str().expect("invalid caddy path"),
+            )
+            .replace(
+                "{{CONFIG_DIR}}",
+                app.config_path.to_str().expect("invalid config path"),
+            );
+
+        let service_path = PathBuf::from("/etc/systemd/system/valet-rust-caddy.service");
+
+        fs::write(&service_path, service_config)?;
+
+        Ok(())
+    }
+
+    fn enable_valet_rust_systemd_service() -> Result<()> {
+        let status = Command::new("systemctl")
+            .args(["enable", "--now", "valet-rust-caddy.service"])
+            .status()?;
+
+        if !status.success() {
+            bail!("Failed to enable valet rust caddy systemd service");
+        }
+
+        Ok(())
     }
 }

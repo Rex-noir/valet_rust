@@ -1,15 +1,13 @@
-use std::{
-    env::{self, home_dir},
-    fs,
-    os::unix::fs::chown,
-    path::PathBuf,
-    sync::OnceLock,
-};
+use std::{env, fs, os::unix::fs::chown, path::PathBuf, sync::OnceLock};
 
-use uzers::{get_user_by_name, os::unix::UserExt};
+use uzers::{get_current_username, get_user_by_name, os::unix::UserExt};
 
 pub struct App {
     pub config_path: PathBuf,
+    pub username: String,
+    pub home_dir: PathBuf,
+    pub uid: u32,
+    pub gid: u32,
 }
 
 static INSTANCE: OnceLock<App> = OnceLock::new();
@@ -17,32 +15,35 @@ static INSTANCE: OnceLock<App> = OnceLock::new();
 impl App {
     pub fn init() -> &'static Self {
         INSTANCE.get_or_init(|| {
-            let (home, uid, gid) = if let Ok(sudo_user) = env::var("SUDO_USER") {
-                let user = get_user_by_name(&sudo_user).expect("failed to find SUDO_USER");
+            let username = env::var("SUDO_USER").unwrap_or_else(|_| {
+                get_current_username()
+                    .expect("failed to determine current user")
+                    .into_string()
+                    .expect("username is not valid UTF-8")
+            });
 
-                (
-                    user.home_dir().to_path_buf(),
-                    Some(user.uid()),
-                    Some(user.primary_group_id()),
-                )
-            } else {
-                (
-                    home_dir().expect("failed to determine home directory"),
-                    None,
-                    None,
-                )
-            };
+            let user = get_user_by_name(&username).expect("failed to look up user");
 
-            let config_path = home.join(".config").join("valet_rust");
+            let home_dir = user.home_dir().to_path_buf();
+            let uid = user.uid();
+            let gid = user.primary_group_id();
+
+            let config_path = home_dir.join(".config").join("valet_rust");
 
             fs::create_dir_all(&config_path).expect("failed to create config directory");
 
-            if let (Some(uid), Some(gid)) = (uid, gid) {
+            if env::var_os("SUDO_USER").is_some() {
                 chown(&config_path, Some(uid), Some(gid))
                     .expect("failed to chown config directory");
             }
 
-            App { config_path }
+            App {
+                config_path,
+                username,
+                home_dir,
+                uid,
+                gid,
+            }
         })
     }
 }

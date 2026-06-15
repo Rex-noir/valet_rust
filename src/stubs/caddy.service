@@ -1,0 +1,17 @@
+[Unit]
+Description=Valet Rust Caddy
+After=network.target
+
+[Service]
+Type=simple
+User={{USERNAME}}
+Group={{USERNAME}}
+ExecStart={{CADDY_BIN}} run --config {{CONFIG_DIR}}/Caddyfile
+ExecReload={{CADDY_BIN}} reload --config {{CONFIG_DIR}}/Caddyfile
+Restart=on-failure
+RestartSec=2
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+
+[Install]
+WantedBy=default.target

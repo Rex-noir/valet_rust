@@ -1,5 +1,4 @@
-use std::fs;
-use std::process::Output;
+use std::{fs, process::Command};
 
 use anyhow::{Ok, Result, bail};
 
@@ -14,8 +13,9 @@ impl Dns {
 
         // check systemd version
 
-        let version = cm
-            .run("systemctl", &["--version"])
+        let version = Command::new("systemctl")
+            .args(["--version"])
+            .output()
             .ok()
             .and_then(|output| String::from_utf8(output.stdout).ok())
             .and_then(|s| Self::parse_systemd_version(&s));
@@ -78,11 +78,14 @@ impl Dns {
     }
 
     fn restart_systemd_resolved() -> Result<()> {
-        let cm = CommandManager::init();
-        let output = cm.run("systemctl", &["restart", "systemd-resolved"])?;
-        if !output.status.success() {
+        if !Command::new("systemctl")
+            .args(["restart", "systemd-resolved"])
+            .status()?
+            .success()
+        {
             bail!("Error restarting systemd-resolved");
         }
+
         Ok(())
     }
 
@@ -105,11 +108,16 @@ impl Dns {
         Ok(())
     }
 
-    fn restart_dnsmasq() -> Result<Output> {
-        let cm = CommandManager::init();
-        let run: std::result::Result<Output, anyhow::Error> =
-            cm.run("systemctl", &["restart", "dnsmasq"]);
-        run
+    fn restart_dnsmasq() -> Result<()> {
+        let status = Command::new("systemctl")
+            .args(["restart", "dnsmasq"])
+            .status()?;
+
+        if !status.success() {
+            anyhow::bail!("failed to restart dnsmasq");
+        }
+
+        Ok(())
     }
 
     fn disable_systemd_resolved_dns_stub_listener() -> Result<()> {
@@ -130,9 +138,15 @@ impl Dns {
         Ok(())
     }
 
-    fn enable_dnsmasq_systemd_service() -> Result<Output> {
-        let cm = CommandManager::init();
-        let output = cm.run("systemctl", &["enable", "dnsmasq", "--now"])?;
-        Ok(output)
+    fn enable_dnsmasq_systemd_service() -> Result<()> {
+        let status = Command::new("systemctl")
+            .args(["enable", "--now", "dnsmasq"])
+            .status()?;
+
+        if !status.success() {
+            anyhow::bail!("failed to enable and start dnsmasq");
+        }
+
+        Ok(())
     }
 }
