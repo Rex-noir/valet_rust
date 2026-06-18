@@ -5,14 +5,12 @@ use anyhow::Result;
 use crate::commands::setup::SetupArgs;
 
 mod install;
-mod link;
+mod serve;
 mod setup;
 
 #[derive(Debug, Subcommand)]
 pub enum Commands {
-    Serve,
-    #[command(subcommand)]
-    Link(link::LinkCommand),
+    Serve(serve::ServeArgs),
     Install,
     Setup(SetupArgs),
 }
@@ -20,8 +18,7 @@ pub enum Commands {
 impl Commands {
     pub fn run(self) -> Result<()> {
         match self {
-            Commands::Serve => todo!(),
-            Commands::Link(args) => link::run(args),
+            Commands::Serve(args) => serve::run(args),
             Commands::Install => install::run(),
             Commands::Setup(args) => setup::run(args),
         }

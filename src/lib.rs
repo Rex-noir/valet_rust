@@ -1,5 +1,6 @@
 pub mod commands;
 pub mod core;
+pub mod drivers;
 pub mod setup;
 
 use clap::Parser;
