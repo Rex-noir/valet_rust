@@ -14,12 +14,8 @@ pub struct Caddy;
 
 impl Caddy {
     pub fn setup() -> Result<()> {
-        let cm = CommandManager::init();
-
-        if !cm.is_installed("caddy")? {
-            println!("Installing caddy using system package manager");
-            Self::install_caddy()?;
-        }
+        println!("Installing caddy using system package manager");
+        Self::install_caddy()?;
 
         println!("Setup caddy configuration");
         Self::setup_caddy_configuration()?;
