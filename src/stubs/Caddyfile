@@ -18,7 +18,7 @@
 	# implications are well understood.
 	# admin "unix//run/caddy/admin.socket"
     	# Use Caddy's internal CA instead of Let's Encrypt
-    	local_certs
+  local_certs
 	admin localhost:2019
 }
 

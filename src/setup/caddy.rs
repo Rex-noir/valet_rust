@@ -1,7 +1,6 @@
 use std::{
     env, fs,
     os::unix::fs::chown,
-    path::PathBuf,
     process::{Command, ExitStatus},
 };
 
@@ -29,27 +28,12 @@ impl Caddy {
         println!("Enable valet rust caddy systemd service");
         Self::enable_valet_rust_systemd_service()?;
 
-        println!("Trust caddy local certs");
-        Self::trust_caddy_local_certs()?;
-
         Ok(())
     }
 
     fn install_caddy() -> Result<ExitStatus, Error> {
         let cm = CommandManager::init();
         cm.install_package("caddy")
-    }
-
-    fn trust_caddy_local_certs() -> Result<()> {
-        let caddy = which::which("caddy")?;
-
-        let status = Command::new(caddy).arg("trust").status()?;
-
-        if !status.success() {
-            anyhow::bail!("`caddy trust` failed");
-        }
-
-        Ok(())
     }
 
     fn setup_caddy_configuration() -> Result<()> {
@@ -98,9 +82,7 @@ impl Caddy {
     fn create_valet_rust_caddy_service() -> Result<()> {
         let app = App::init();
         let caddy_bin = which("caddy")?;
-
         let service_config = include_str!("../stubs/caddy.service")
-            .replace("{{USERNAME}}", &app.username)
             .replace(
                 "{{CADDY_BIN}}",
                 caddy_bin.to_str().expect("invalid caddy path"),
@@ -110,16 +92,23 @@ impl Caddy {
                 app.config_path.to_str().expect("invalid config path"),
             );
 
-        let service_path = PathBuf::from("/etc/systemd/system/valet-rust-caddy.service");
+        let user_systemd_dir = app.home_dir.join(".config/systemd/user");
+        fs::create_dir_all(&user_systemd_dir)?;
 
+        let service_path = user_systemd_dir.join("valet-rust-caddy.service");
         fs::write(&service_path, service_config)?;
+
+        if env::var_os("SUDO_USER").is_some() {
+            chown(&user_systemd_dir, Some(app.uid), Some(app.gid))?;
+            chown(&service_path, Some(app.uid), Some(app.gid))?;
+        }
 
         Ok(())
     }
 
     fn enable_valet_rust_systemd_service() -> Result<()> {
         let status = Command::new("systemctl")
-            .args(["enable", "--now", "valet-rust-caddy.service"])
+            .args(["enable", "--user", "--now", "valet-rust-caddy.service"])
             .status()?;
 
         if !status.success() {
