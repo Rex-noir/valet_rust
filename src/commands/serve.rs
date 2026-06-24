@@ -13,7 +13,10 @@ pub struct ServeArgs {
     pub path: String,
 
     #[arg(long)]
-    pub php_version: Option<String>,
+    pub php_path: Option<String>,
+
+    #[arg(long)]
+    pub node_path: Option<String>,
 }
 
 pub fn run(args: ServeArgs) -> Result<()> {
@@ -27,7 +30,8 @@ pub fn run(args: ServeArgs) -> Result<()> {
     let ctx = ServeContext {
         domain: args.domain,
         path,
-        php_version: args.php_version,
+        php_path: args.php_path,
+        node_path: args.node_path,
     };
 
     let driver = drivers()
