@@ -65,6 +65,7 @@ impl CommandManager {
         let stdout = String::from_utf8_lossy(&output.stdout);
 
         let installed_list = self.package_manager.get_config().list_parser.parse(&stdout);
+        println!("Installed list : {installed_list:?}");
 
         Ok(installed_list.contains_key(package))
     }
