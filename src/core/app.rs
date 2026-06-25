@@ -6,6 +6,7 @@ pub struct App {
     pub config_path: PathBuf,
     pub username: String,
     pub home_dir: PathBuf,
+    pub caddy_files_path: PathBuf,
     pub uid: u32,
     pub gid: u32,
 }
@@ -28,7 +29,7 @@ impl App {
             let uid = user.uid();
             let gid = user.primary_group_id();
 
-            let config_path = home_dir.join(".config").join("valet_rust");
+            let config_path = home_dir.join(".config").join("valex");
 
             fs::create_dir_all(&config_path).expect("failed to create config directory");
 
@@ -37,9 +38,14 @@ impl App {
                     .expect("failed to chown config directory");
             }
 
+            let caddy_files_path = config_path.join("caddy_files");
+            fs::create_dir_all(&caddy_files_path)
+                .expect("Failed to create directory for caddy files");
+
             App {
                 config_path,
                 username,
+                caddy_files_path,
                 home_dir,
                 uid,
                 gid,

@@ -10,6 +10,7 @@ pub struct ServeContext {
     pub path: PathBuf,
     pub php_path: Option<String>,
     pub node_path: Option<String>,
+    pub php_fpm: Option<String>,
 }
 
 pub trait Driver {

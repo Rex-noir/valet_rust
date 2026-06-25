@@ -1,6 +1,6 @@
 use anyhow::Result;
 use clap::Parser;
-use valet_rust::Cli;
+use valex::Cli;
 
 fn main() -> Result<()> {
     let cli = Cli::parse();

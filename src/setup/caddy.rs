@@ -40,17 +40,18 @@ impl Caddy {
 
         let app = App::init();
 
-        let caddy_files_dir = app.config_path.join("caddy_files");
-
         Command::new("mkdir")
             .arg("-p")
-            .arg(&caddy_files_dir)
+            .arg(&app.caddy_files_path)
             .status()?
             .success()
             .then_some(())
             .ok_or_else(|| anyhow!("failed to create caddy files directory"))?;
 
-        let import_line = format!("import {}", caddy_files_dir.join("*.caddyfile").display());
+        let import_line = format!(
+            "import {}",
+            app.caddy_files_path.join("*.caddyfile").display()
+        );
 
         let status = Command::new("grep")
             .arg("-qxF")

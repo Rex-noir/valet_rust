@@ -1,5 +1,5 @@
 [package]
-name = "valet_rust"
+name = "valex"
 version = "0.1.0"
 edition = "2024"
 
@@ -12,3 +12,4 @@ system_env = "0.10.0"
 regex = { version = "1.10", features = ["unicode"] }
 uzers = "0.12.2"
 which = "8.0.3"
+slug = "0.1.6"
