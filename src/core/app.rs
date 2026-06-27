@@ -6,7 +6,7 @@ pub struct App {
     pub config_path: PathBuf,
     pub username: String,
     pub home_dir: PathBuf,
-    pub caddy_files_path: PathBuf,
+    pub nginx_files_path: PathBuf,
     pub uid: u32,
     pub gid: u32,
 }
@@ -38,14 +38,14 @@ impl App {
                     .expect("failed to chown config directory");
             }
 
-            let caddy_files_path = config_path.join("caddy_files");
+            let caddy_files_path = config_path.join("nginx");
             fs::create_dir_all(&caddy_files_path)
                 .expect("Failed to create directory for caddy files");
 
             App {
                 config_path,
                 username,
-                caddy_files_path,
+                nginx_files_path: caddy_files_path,
                 home_dir,
                 uid,
                 gid,

@@ -2,7 +2,7 @@ use anyhow::{Ok, Result};
 use clap::{Args, Subcommand};
 use uzers::get_effective_uid;
 
-use crate::setup::{Caddy, Dns};
+use crate::setup::{Dns, Nginx};
 
 #[derive(Debug, Args)]
 pub struct SetupArgs {
@@ -13,7 +13,7 @@ pub struct SetupArgs {
 #[derive(Debug, Subcommand)]
 pub enum SetupCommand {
     Dns,
-    Caddy,
+    Nginx,
 }
 
 pub fn run(args: SetupArgs) -> Result<()> {
@@ -23,15 +23,15 @@ pub fn run(args: SetupArgs) -> Result<()> {
                 println!("Setting up DNS...");
                 Dns::setup()?;
             }
-            SetupCommand::Caddy => {
+            SetupCommand::Nginx => {
                 println!("Setting up Caddy...");
-                Caddy::setup()?;
+                Nginx::setup()?;
             }
         },
         None => {
             if get_effective_uid() == 0 {
                 Dns::setup()?;
-                Caddy::setup()?;
+                Nginx::setup()?;
             } else {
                 anyhow::bail!("This operation requires root privileges.");
             }

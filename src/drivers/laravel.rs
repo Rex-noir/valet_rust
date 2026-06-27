@@ -60,7 +60,7 @@ impl Driver for Laravel {
         );
 
         let app = App::init();
-        let caddy_file_path = app.caddy_files_path.join(format!("{domain}.caddyfile"));
+        let caddy_file_path = app.nginx_files_path.join(format!("{domain}.caddyfile"));
 
         println!("→ Writing Caddyfile to {}", caddy_file_path.display());
 

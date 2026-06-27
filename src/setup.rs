@@ -1,5 +1,5 @@
-mod caddy;
 mod dns;
+mod nginx;
 
-pub use caddy::Caddy;
 pub use dns::Dns;
+pub use nginx::Nginx;
