@@ -1,8 +1,7 @@
 use anyhow::{Ok, Result};
 use clap::{Args, Subcommand};
-use uzers::get_effective_uid;
 
-use crate::setup::{Dns, Nginx};
+use crate::setup::{Dns, Nginx, PHPFpm};
 
 #[derive(Debug, Args)]
 pub struct SetupArgs {
@@ -14,27 +13,26 @@ pub struct SetupArgs {
 pub enum SetupCommand {
     Dns,
     Nginx,
+    PHPFpm,
 }
 
 pub fn run(args: SetupArgs) -> Result<()> {
     match args.command {
         Some(cmd) => match cmd {
             SetupCommand::Dns => {
-                println!("Setting up DNS...");
                 Dns::setup()?;
             }
             SetupCommand::Nginx => {
-                println!("Setting up Caddy...");
                 Nginx::setup()?;
+            }
+            SetupCommand::PHPFpm => {
+                PHPFpm::setup()?;
             }
         },
         None => {
-            if get_effective_uid() == 0 {
-                Dns::setup()?;
-                Nginx::setup()?;
-            } else {
-                anyhow::bail!("This operation requires root privileges.");
-            }
+            Dns::setup()?;
+            Nginx::setup()?;
+            PHPFpm::setup()?;
         }
     }
 

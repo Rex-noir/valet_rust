@@ -8,9 +8,7 @@ use laravel::Laravel;
 pub struct ServeContext {
     pub domain: Option<String>,
     pub path: PathBuf,
-    pub php_path: Option<String>,
-    pub node_path: Option<String>,
-    pub php_fpm: Option<String>,
+    pub php_version: Option<String>,
 }
 
 pub trait Driver {

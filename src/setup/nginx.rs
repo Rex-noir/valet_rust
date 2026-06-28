@@ -12,7 +12,7 @@ pub struct Nginx;
 
 impl Nginx {
     pub(crate) fn setup() -> Result<()> {
-        println!("Setting nginx");
+        println!("Setting up nginx");
 
         let cm = CommandManager::init();
         cm.install_package("nginx")?;
@@ -23,18 +23,18 @@ impl Nginx {
         Ok(())
     }
 
-    fn load_nginx_config() -> String {
-        let app = App::init();
+    fn load_nginx_config() -> Result<String> {
+        let app = App::init()?;
 
         let nginx_path = app.nginx_files_path.join("*.conf").display().to_string();
 
-        include_str!("../stubs/nginx.conf")
+        Ok(include_str!("../stubs/nginx.conf")
             .replace("{{VALEX_USER}}", &app.username)
-            .replace("{{VALEX_NGINX_CONFIGS_PATH}}", &nginx_path)
+            .replace("{{VALEX_NGINX_CONFIGS_PATH}}", &nginx_path))
     }
 
     fn write_nginx_config() -> Result<()> {
-        let config = Self::load_nginx_config();
+        let config = Self::load_nginx_config()?;
 
         let mut child = Command::new("sudo")
             .args(["tee", "/etc/nginx/nginx.conf"])

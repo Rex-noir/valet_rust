@@ -1,6 +1,6 @@
 use std::fs;
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use slug::slugify;
 
 use crate::{
@@ -22,7 +22,7 @@ impl Driver for Laravel {
     fn serve(
         &self,
         ServeContext {
-            php_fpm,
+            php_version,
             domain,
             path,
             ..
@@ -30,7 +30,15 @@ impl Driver for Laravel {
     ) -> Result<()> {
         println!("→ Configuring Laravel site...");
 
-        let php_fpm = php_fpm.ok_or_else(|| anyhow::anyhow!("Please provide php-fpm path."))?;
+        let php_version = php_version.context("PHP version is required")?;
+
+        let app = App::init()?;
+        let config = &app.config;
+
+        let php_installation = config.php.get(&php_version).context(format!(
+            "Failed to get php installation config for php {}",
+            php_version
+        ))?;
 
         let mut domain = domain.unwrap_or_else(|| {
             let name = path.file_name().unwrap().to_string_lossy();
@@ -42,29 +50,24 @@ impl Driver for Laravel {
         }
 
         println!("✓ Using domain: {}", domain);
-        println!("✓ Using PHP-FPM: {}", php_fpm);
+        println!("✓ Using PHP-FPM: {}", php_version);
 
         let public_path = path.join("public");
 
-        let caddyfile = format!(
-            r#"{domain} {{
-    tls internal
-    root * {}
-    encode zstd gzip
+        let nginx_config = include_str!("../stubs/laravel-nginx.conf")
+            .replace("{{VALEX_DOMAIN}}", &domain)
+            .replace("{{VALEX_ROOT}}", &public_path.to_string_lossy())
+            .replace(
+                "{{VALEX_PHP_FPM_SOCKET}}",
+                &php_installation.fpm_socket_path,
+            );
 
-    php_fastcgi {php_fpm}
-    file_server
-}}
-"#,
-            public_path.display()
-        );
+        let app = App::init()?;
+        let nginx_file_path = app.nginx_files_path.join(format!("{domain}.conf"));
 
-        let app = App::init();
-        let caddy_file_path = app.nginx_files_path.join(format!("{domain}.caddyfile"));
+        println!("→ Writing Caddyfile to {}", nginx_file_path.display());
 
-        println!("→ Writing Caddyfile to {}", caddy_file_path.display());
-
-        fs::write(&caddy_file_path, caddyfile)?;
+        fs::write(&nginx_file_path, nginx_config)?;
 
         println!("✓ Caddyfile created successfully");
 
