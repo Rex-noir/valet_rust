@@ -1,4 +1,4 @@
-use std::fs;
+use std::{fs, process::Command};
 
 use anyhow::{Context, Result};
 use slug::slugify;
@@ -65,11 +65,21 @@ impl Driver for Laravel {
         let app = App::init()?;
         let nginx_file_path = app.nginx_files_path.join(format!("{domain}.conf"));
 
-        println!("→ Writing Caddyfile to {}", nginx_file_path.display());
+        println!("→ Writing nginx file to {}", nginx_file_path.display());
 
         fs::write(&nginx_file_path, nginx_config)?;
 
-        println!("✓ Caddyfile created successfully");
+        let status = Command::new("systemctl")
+            .args(["restart", "nginx"])
+            .status()?;
+
+        if status.success() {
+            println!("Nginx file created successfully!")
+        } else {
+            println!("Failed to reload nginx, please reload it manually.")
+        }
+
+        println!("✓ Nginx created successfully");
 
         Ok(())
     }
