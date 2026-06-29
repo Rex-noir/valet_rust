@@ -28,7 +28,7 @@ impl Driver for Laravel {
             ..
         }: ServeContext,
     ) -> Result<()> {
-        println!("→ Configuring Laravel site...");
+        println!("→ Serving laravel project ...");
 
         let php_version = php_version.context("PHP version is required")?;
 
