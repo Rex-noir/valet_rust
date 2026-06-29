@@ -1,6 +1,7 @@
+use crate::core::fs::FsProvider;
 use crate::core::Configuration;
 use anyhow::Result;
-use std::{env, fs, os::unix::fs::chown, path::PathBuf, sync::OnceLock};
+use std::{env, path::PathBuf, sync::OnceLock};
 use uzers::{get_current_groupname, get_current_username, get_user_by_name, os::unix::UserExt};
 
 pub struct App {
@@ -18,7 +19,11 @@ pub struct App {
 static INSTANCE: OnceLock<App> = OnceLock::new();
 
 impl App {
-    pub fn init() -> Result<&'static Self> {
+    pub fn instance() -> &'static Self {
+        INSTANCE.get().expect("App not initialized")
+    }
+
+    pub fn init_with_fs(fs: &dyn FsProvider) -> Result<&'static Self> {
         if let Some(app) = INSTANCE.get() {
             return Ok(app);
         }
@@ -41,15 +46,15 @@ impl App {
         let app_dir = home_dir.join(".config").join("valex");
         let config_path = app_dir.join("config.json5");
 
-        fs::create_dir_all(&app_dir).expect("failed to create config directory");
+        fs.create_dir_all(&app_dir)?;
         if env::var_os("SUDO_USER").is_some() {
-            chown(&app_dir, Some(uid), Some(gid)).expect("failed to chown config directory");
+            fs.chown(&app_dir, Some(uid), Some(gid))?;
         }
 
         let nginx_files_path = app_dir.join("nginx");
-        fs::create_dir_all(&nginx_files_path).expect("failed to create directory for caddy files");
+        fs.create_dir_all(&nginx_files_path)?;
 
-        let config = Configuration::load_or_default(&config_path)?;
+        let config = Configuration::load_or_default(&config_path, fs)?;
 
         let app = App {
             app_dir,

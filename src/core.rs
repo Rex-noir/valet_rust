@@ -1,3 +1,4 @@
+pub mod fs;
 mod app;
 mod command_manager;
 mod configuration;

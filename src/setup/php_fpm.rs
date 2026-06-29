@@ -1,14 +1,14 @@
-use std::{io::Write, process::Command};
+use std::process::Command;
 
-use anyhow::{Context, Ok, Result, bail};
+use anyhow::{Ok, Result, bail};
 
-use crate::core::App;
+use crate::{core::App, util};
 
 pub struct PHPFpm;
 
 impl PHPFpm {
     pub(crate) fn setup() -> Result<()> {
-        let app = App::init()?;
+        let app = App::instance();
 
         let fpm_config = include_str!("../stubs/valex-fpm.conf")
             .replace("{{VALEX_USER}}", &app.username)
@@ -20,16 +20,7 @@ impl PHPFpm {
             let config =
                 fpm_config.replace("{{VALEX_FPM_SOCKET_PATH}}", &installation.fpm_socket_path);
 
-            Command::new("sudo")
-                .args(["tee", &installation.fpm_config_path])
-                .stdin(std::process::Stdio::piped())
-                .stdout(std::process::Stdio::null())
-                .spawn()
-                .context("failed to start tee")?
-                .stdin
-                .as_mut()
-                .context("failed to open stdin")?
-                .write_all(config.as_bytes())?;
+            util::sudo_write(&installation.fpm_config_path, &config)?;
         }
 
         // Restart all fpm services

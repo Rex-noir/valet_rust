@@ -1,12 +1,8 @@
-use std::{
-    io::Write,
-    path::Path,
-    process::{Command, Stdio},
-};
+use std::{path::Path, process::Command};
 
 use anyhow::{Context, Ok, Result, bail};
 
-use crate::core::{App, CommandManager};
+use crate::{core::{App, CommandManager}, util};
 
 pub struct Nginx;
 
@@ -24,7 +20,7 @@ impl Nginx {
     }
 
     fn load_nginx_config() -> Result<String> {
-        let app = App::init()?;
+        let app = App::instance();
 
         let nginx_path = app.nginx_files_path.join("*.conf").display().to_string();
 
@@ -36,16 +32,7 @@ impl Nginx {
     fn write_nginx_config() -> Result<()> {
         let config = Self::load_nginx_config()?;
 
-        let mut child = Command::new("sudo")
-            .args(["tee", "/etc/nginx/nginx.conf"])
-            .stdin(Stdio::piped())
-            .stdout(Stdio::null())
-            .spawn()?;
-
-        child.stdin.as_mut().unwrap().write_all(config.as_bytes())?;
-
-        let status = child.wait()?;
-        anyhow::ensure!(status.success(), "failed to write nginx.conf");
+        util::sudo_write("/etc/nginx/nginx.conf", &config)?;
 
         Self::configure_selinux()?;
 

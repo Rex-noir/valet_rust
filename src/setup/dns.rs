@@ -1,11 +1,8 @@
-use std::{
-    io::Write,
-    process::{Command, Stdio},
-};
+use std::process::Command;
 
 use anyhow::{Ok, Result, bail};
 
-use crate::core::CommandManager;
+use crate::{core::CommandManager, util};
 
 #[derive(Debug)]
 pub struct Dns;
@@ -66,61 +63,13 @@ impl Dns {
         version_str.parse::<u32>().ok()
     }
 
-    /// `sudo mkdir -p <dir>`
-    fn sudo_mkdir_p(dir: &str) -> Result<()> {
-        let status = Command::new("sudo")
-            .args(["mkdir", "-p", dir])
-            .status()
-            .map_err(|e| anyhow::anyhow!("Failed to spawn `sudo mkdir -p {}`: {}", dir, e))?;
-
-        if !status.success() {
-            bail!("Failed to create {} via sudo mkdir -p", dir);
-        }
-
-        Ok(())
-    }
-
-    /// Writes `content` to `path` as root via `sudo tee <path>`, piping
-    /// content over stdin instead of touching the file with our own
-    /// (non-root) write permissions.
-    fn sudo_write_file(path: &str, content: &str) -> Result<()> {
-        let mut child = Command::new("sudo")
-            .args(["tee", path])
-            .stdin(Stdio::piped())
-            .stdout(Stdio::null())
-            .stderr(Stdio::piped())
-            .spawn()
-            .map_err(|e| anyhow::anyhow!("Failed to spawn `sudo tee {}`: {}", path, e))?;
-
-        child
-            .stdin
-            .take()
-            .ok_or_else(|| anyhow::anyhow!("Failed to open stdin for `sudo tee {}`", path))?
-            .write_all(content.as_bytes())
-            .map_err(|e| anyhow::anyhow!("Failed to write to `sudo tee {}` stdin: {}", path, e))?;
-
-        let output = child
-            .wait_with_output()
-            .map_err(|e| anyhow::anyhow!("Failed waiting on `sudo tee {}`: {}", path, e))?;
-
-        if !output.status.success() {
-            bail!(
-                "Failed to write {} via sudo tee: {}",
-                path,
-                String::from_utf8_lossy(&output.stderr)
-            );
-        }
-
-        Ok(())
-    }
-
     fn setup_dns_delegate_config() -> Result<()> {
         let dir = "/etc/systemd/dns-delegate.d";
-        Self::sudo_mkdir_p(dir)?;
+        util::sudo_create_dir_all(dir)?;
 
         let path = "/etc/systemd/dns-delegate.d/valet-rust.dns-delegate";
         let content = "[Delegate]\nDNS=127.0.0.1\nDomains=~test\nDNSSECMode=no\n";
-        Self::sudo_write_file(path, content)?;
+        util::sudo_write(path, content)?;
 
         println!("DNS delegate config written to {}", path);
         Ok(())
@@ -143,15 +92,15 @@ impl Dns {
         let main_dnsmasq_conf_path = "/etc/dnsmasq.conf";
         let stub_dnsmasq_conf = include_str!("../stubs/dnsmasq.conf");
 
-        Self::sudo_write_file(main_dnsmasq_conf_path, stub_dnsmasq_conf)?;
+        util::sudo_write(main_dnsmasq_conf_path, stub_dnsmasq_conf)?;
 
         let dir = "/etc/dnsmasq.d";
-        Self::sudo_mkdir_p(dir)?;
+        util::sudo_create_dir_all(dir)?;
 
         let path = "/etc/dnsmasq.d/valet-rust.conf";
         let config =
             "listen-address=127.0.0.1\nbind-interfaces\nno-resolv\naddress=/.test/127.0.0.1\n";
-        Self::sudo_write_file(path, config)?;
+        util::sudo_write(path, config)?;
 
         println!("dnsmasq config written to {}", path);
         Ok(())
@@ -172,11 +121,11 @@ impl Dns {
 
     fn disable_systemd_resolved_dns_stub_listener() -> Result<()> {
         let dir = "/etc/systemd/resolved.conf.d";
-        Self::sudo_mkdir_p(dir)?;
+        util::sudo_create_dir_all(dir)?;
 
         let path = "/etc/systemd/resolved.conf.d/no-stub-listener.conf";
         let content = "[Resolve]\nDNSStubListener=no\n";
-        Self::sudo_write_file(path, content)?;
+        util::sudo_write(path, content)?;
 
         println!("DNSStubListener disabled via drop-in at {}", path);
         Ok(())

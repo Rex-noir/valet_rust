@@ -2,6 +2,8 @@ use std::{env, path::PathBuf};
 
 use anyhow::{Result, anyhow};
 
+use crate::core::fs::StdFs;
+use crate::core::App;
 use crate::drivers::{ServeContext, drivers};
 
 #[derive(Debug, clap::Args)]
@@ -17,6 +19,8 @@ pub struct ServeArgs {
 }
 
 pub fn run(args: ServeArgs) -> Result<()> {
+    App::init_with_fs(&StdFs)?;
+
     println!("{args:?}");
     let path: PathBuf = if args.path.trim().is_empty() || args.path == "." {
         env::current_dir()?

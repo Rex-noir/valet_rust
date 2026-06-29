@@ -1,6 +1,8 @@
 use anyhow::{Ok, Result};
 use clap::{Args, Subcommand};
 
+use crate::core::fs::SudoFs;
+use crate::core::App;
 use crate::setup::{Dns, Nginx, PHPFpm};
 
 #[derive(Debug, Args)]
@@ -17,6 +19,8 @@ pub enum SetupCommand {
 }
 
 pub fn run(args: SetupArgs) -> Result<()> {
+    App::init_with_fs(&SudoFs)?;
+
     match args.command {
         Some(cmd) => match cmd {
             SetupCommand::Dns => {
