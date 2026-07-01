@@ -4,7 +4,7 @@ use anyhow::{Context, Result};
 use slug::slugify;
 
 use crate::{
-    core::App,
+    core::AppContext,
     drivers::{Driver, ServeContext},
 };
 
@@ -27,12 +27,12 @@ impl Driver for Laravel {
             path,
             ..
         }: ServeContext,
+        app: &AppContext,
     ) -> Result<()> {
         println!("→ Serving laravel project ...");
 
         let php_version = php_version.context("PHP version is required")?;
 
-        let app = App::instance();
         let config = &app.config;
 
         let php_installation = config.php.get(&php_version).context(format!(
@@ -63,7 +63,6 @@ impl Driver for Laravel {
                 &php_installation.fpm_socket_path,
             );
 
-        let app = App::instance();
         let nginx_file_path = app.nginx_files_path.join(format!("{domain}.conf"));
 
         println!("→ Writing nginx file to {}", nginx_file_path.display());

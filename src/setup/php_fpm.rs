@@ -2,13 +2,12 @@ use std::process::Command;
 
 use anyhow::{Ok, Result, bail};
 
-use crate::{core::App, util};
+use crate::{core::AppContext, util};
 
 pub struct PHPFpm;
 
 impl PHPFpm {
-    pub(crate) fn setup() -> Result<()> {
-        let app = App::instance();
+    pub(crate) fn setup(app: &AppContext) -> Result<()> {
 
         let fpm_config = include_str!("../stubs/valex-fpm.conf")
             .replace("{{VALEX_USER}}", &app.username)

@@ -2,25 +2,27 @@ use std::{path::Path, process::Command};
 
 use anyhow::{Context, Ok, Result, bail};
 
-use crate::{core::{App, CommandManager}, util};
+use crate::{
+    core::{AppContext, CommandManager},
+    util,
+};
 
 pub struct Nginx;
 
 impl Nginx {
-    pub(crate) fn setup() -> Result<()> {
+    pub(crate) fn setup(app: &AppContext) -> Result<()> {
         println!("Setting up nginx");
 
         let cm = CommandManager::init();
         cm.install_package("nginx")?;
 
-        Self::write_nginx_config()?;
+        Self::write_nginx_config(app)?;
         Self::restart_nginx()?;
 
         Ok(())
     }
 
-    fn load_nginx_config() -> Result<String> {
-        let app = App::instance();
+    fn load_nginx_config(app: &AppContext) -> Result<String> {
 
         let nginx_path = app.nginx_files_path.join("*.conf").display().to_string();
 
@@ -29,8 +31,8 @@ impl Nginx {
             .replace("{{VALEX_NGINX_CONFIGS_PATH}}", &nginx_path))
     }
 
-    fn write_nginx_config() -> Result<()> {
-        let config = Self::load_nginx_config()?;
+    fn write_nginx_config(app: &AppContext) -> Result<()> {
+        let config = Self::load_nginx_config(app)?;
 
         util::sudo_write("/etc/nginx/nginx.conf", &config)?;
 
